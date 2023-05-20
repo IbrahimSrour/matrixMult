@@ -10,7 +10,7 @@ using std::cout;
 using std::generate;
 using std::vector;
 
-const int MATRIX_SIZE = 4096;
+const int MATRIX_SIZE = 2048;
 const int SHARED_MEM_SIZE = 1024;
 
 __global__ void matMul(const int *mat_a, const int *mat_b, int *mat_c) {
@@ -54,39 +54,38 @@ int main() {
   cudaMalloc(&d_mat_a, bytes);
   cudaMalloc(&d_mat_b, bytes);
   cudaMalloc(&d_mat_c, bytes);
-  cudaEvent_t start, stop;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
-  cudaEventRecord(start, 0);
-  cudaMemcpy(d_mat_a, h_mat_a.data(), bytes, cudaMemcpyHostToDevice);
-  cudaMemcpy(d_mat_b, h_mat_b.data(), bytes, cudaMemcpyHostToDevice);
+ cudaEvent_t start, stop;
+cudaEventCreate(&start);
+cudaEventCreate(&stop);
+cudaEventRecord(start, 0);
 
-  int THREADS = 32;
+cudaMemcpy(d_mat_a, h_mat_a.data(), bytes, cudaMemcpyHostToDevice);
+cudaMemcpy(d_mat_b, h_mat_b.data(), bytes, cudaMemcpyHostToDevice);
 
-  int BLOCKS = MATRIX_SIZE / THREADS;
+int THREADS = 32;
+int BLOCKS = MATRIX_SIZE / THREADS;
 
-  dim3 threads(THREADS, THREADS);
-  dim3 blocks(BLOCKS, BLOCKS);
+dim3 threads(THREADS, THREADS);
+dim3 blocks(BLOCKS, BLOCKS);
 
-  matMul<<<blocks, threads>>>(d_mat_a, d_mat_b, d_mat_c);
+matMul<<<blocks, threads>>>(d_mat_a, d_mat_b, d_mat_c);
 
-  cudaMemcpy(h_mat_c.data(), d_mat_c, bytes, cudaMemcpyDeviceToHost);
- 
+cudaMemcpy(h_mat_c.data(), d_mat_c, bytes, cudaMemcpyDeviceToHost);
+
+cudaEventRecord(stop, 0);  // Move this line up here.
+cudaEventSynchronize(stop);
 
 float elapsedTime;
-  cudaEventElapsedTime(&elapsedTime, start, stop);
+cudaEventElapsedTime(&elapsedTime, start, stop);
 
-  std::cout << "Elapsed time: " << elapsedTime << " ms\n";
-   cudaEventRecord(stop, 0);
-  cudaEventSynchronize(stop);
+std::cout << "Elapsed time: " << elapsedTime << " ms\n";
 
+cudaEventDestroy(start);
+cudaEventDestroy(stop);
 
-  cudaEventDestroy(start);
-  cudaEventDestroy(stop);
+cudaFree(d_mat_a);
+cudaFree(d_mat_b);
+cudaFree(d_mat_c);
 
-  cudaFree(d_mat_a);
-  cudaFree(d_mat_b);
-  cudaFree(d_mat_c);
-
-  return 0;
+return 0;
 }
